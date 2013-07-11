@@ -53,6 +53,9 @@ $wgExtensionCredits['parserhook'][] = array(
     'url' => 'http://yourcmc.ru/wiki/CharInsertList_(MediaWiki)',
     'description' => 'Allows creation of HTML selectboxes for inserting non-standard characters',
 );
+define('CIL_TYPE_DROPDOWN', 'dropdown');
+define('CIL_TYPE_LINKS',    'links');
+
 
 function efListInsertSetup()
 {
@@ -66,8 +69,25 @@ function efListInsertParserHook($text, $attrs, $parser)
     $data = explode("\n", trim($text));
     if (!$data)
         return '';
+    
+    if (isset($attrs['type']) && in_array(strtolower($attrs['type']), array(CIL_TYPE_DROPDOWN, CIL_TYPE_LINKS)))
+    {
+        $type = $attrs['type'];
+        unset($attrs['type']);
+    }
+    else
+    {
+        $type = CIL_TYPE_DROPDOWN;
+    }
     $line = trim($data[count($data)-1]);
     $html = '';
+    $select_attr = '';
+    foreach ($attrs as $k => $v)
+        $select_attr .= htmlspecialchars($k, ENT_QUOTES) . '="' . htmlspecialchars($v, ENT_QUOTES).'" ';
+    if ($type == CIL_TYPE_LINKS)
+    {
+        $select_attr .= ' onclick="' . efListItemChange($type) . '"';
+    }
     for ($i = count($data)-2; $i >= 0; $i--)
     {
         $prev = trim($data[$i]);
@@ -75,23 +95,78 @@ function efListInsertParserHook($text, $attrs, $parser)
             $line = substr($prev, 0, -1) . "\n" . $line;
         else
         {
-            $html = efListInsertOption($line) . $html;
+            $html = efListInsertOption($line, $type, $select_attr) . $html;
             $line = $prev;
         }
     }
-    $html = efListInsertOption($line) . $html;
-    $select_attr = '';
-    foreach ($attrs as $k => $v)
-        $select_attr .= htmlspecialchars($k, ENT_QUOTES) . '="' . htmlspecialchars($v, ENT_QUOTES).'" ';
-    $html = '<select '.$select_attr.'onchange="if(this.value){var p=-1;while((p=this.value.indexOf(\'+\',p+1))>0 && this.value.substr(p-1,1)==\'\\\\\'){}if(p>=0){insertTags(this.value.substr(0,p).replace(\'\\\\+\',\'+\'),this.value.substr(p+1).replace(\'\\\\+\',\'+\'),\'\');}else{insertTags(this.value.replace(\'\\\\+\',\'+\'),\'\',\'\');}this.selectedIndex=0;}"><option value="">-</option>' . $html . '</select>';
+    $html = efListInsertOption($line, $type, $select_attr) . $html;
+    switch ($type)
+    {
+        case CIL_TYPE_LINKS:
+            // do nothing
+            break;
+        case CIL_TYPE_DROPDOWN:
+        default:
+            $html = '<select '.$select_attr.'onchange="' . efListItemChange($type) . '"><option value="">-</option>' . $html . '</select>';
+            break;
+    }
     return $html;
 }
 
-function efListInsertOption($line)
+function efListInsertOption($line, $type, $select_attr = '')
 {
     list($name, $value) = explode("=", $line, 2);
     $name = trim($name);
     $value = trim($value);
-    return '<option value="'.htmlspecialchars($value, ENT_QUOTES).'">'.htmlspecialchars($name, ENT_QUOTES).'</option>';
+    switch ($type)
+    {
+        case CIL_TYPE_LINKS:
+            return '<a href="#" rel="'.htmlspecialchars($value, ENT_QUOTES).'"' . $select_attr . '>'.htmlspecialchars($name, ENT_QUOTES).'</a> ';
+        case CIL_TYPE_DROPDOWN:
+        default:
+            return '<option value="'.htmlspecialchars($value, ENT_QUOTES).'">'.htmlspecialchars($name, ENT_QUOTES).'</option>';
+    }
+}
+
+function efListItemChange($type)
+{
+    $value = '';
+    $select = '';
+    switch ($type)
+    {
+        case CIL_TYPE_LINKS:
+            $value = 'this.rel';
+            break;
+        case CIL_TYPE_DROPDOWN:
+        default:
+            $value = 'this.value';
+            $select = 'this.selectedIndex=0;';
+            break;
+    }
+    $res = <<<END_STRING
+if($value){
+    var p=-1;
+    while(
+        (p=$value.indexOf('+',p+1))>0 &&
+        $value.substr(p-1,1)=='\\\\'
+    ){}
+    if(p>=0)
+    {
+        insertTags(
+            $value.substr(0,p).replace('\\\\+','+'),
+            $value.substr(p+1).replace('\\\\+','+'),
+            ''
+        );
+    }
+    else
+    {
+        insertTags($value.replace('\\\\+','+'),'','');
+    }
+    $select
+}
+return false;
+END_STRING;
+    $res = str_replace("\n", '', $res);
+    return $res;
 }
 
