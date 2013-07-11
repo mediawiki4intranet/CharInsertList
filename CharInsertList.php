@@ -69,6 +69,12 @@ $wgExtensionCredits['parserhook'][] = array(
 define('CIL_TYPE_DROPDOWN', 'dropdown');
 define('CIL_TYPE_LINKS', 'links');
 
+$wgResourceModules['CharInsertList'] = array(
+    'localBasePath' => __DIR__,
+    'remoteExtPath' => 'CharInsertList',
+    'scripts'       => array('listinsert.js'),
+);
+
 function efListInsertSetup()
 {
     global $wgParser;
@@ -78,6 +84,7 @@ function efListInsertSetup()
 
 function efListInsertParserHook($text, $attrs, $parser)
 {
+    global $wgOut;
     $data = explode("\n", trim($text));
     if (!$data)
     {
@@ -95,14 +102,10 @@ function efListInsertParserHook($text, $attrs, $parser)
     }
     $line = trim($data[count($data)-1]);
     $html = '';
-    $select_attr = '';
+    $select_attr = 'onclick="insertTagsWithSplit(this)" ';
     foreach ($attrs as $k => $v)
     {
         $select_attr .= htmlspecialchars($k, ENT_QUOTES) . '="' . htmlspecialchars($v, ENT_QUOTES).'" ';
-    }
-    if ($type == CIL_TYPE_LINKS)
-    {
-        $select_attr .= ' onclick="' . efListItemChange($type) . '"';
     }
     for ($i = count($data)-2; $i >= 0; $i--)
     {
@@ -125,9 +128,10 @@ function efListInsertParserHook($text, $attrs, $parser)
             break;
         case CIL_TYPE_DROPDOWN:
         default:
-            $html = '<select '.$select_attr.'onchange="' . efListItemChange($type) . '"><option value="">-</option>' . $html . '</select>';
+            $html = '<select '.$select_attr.'><option value="">-</option>' . $html . '</select>';
             break;
     }
+    $wgOut->addModules('CharInsertList');
     return $html;
 }
 
@@ -144,46 +148,4 @@ function efListInsertOption($line, $type, $select_attr = '')
         default:
             return '<option value="'.htmlspecialchars($value, ENT_QUOTES).'">'.htmlspecialchars($name, ENT_QUOTES).'</option>';
     }
-}
-
-function efListItemChange($type)
-{
-    $value = '';
-    $select = '';
-    switch ($type)
-    {
-        case CIL_TYPE_LINKS:
-            $value = 'this.rel';
-            break;
-        case CIL_TYPE_DROPDOWN:
-        default:
-            $value = 'this.value';
-            $select = 'this.selectedIndex=0;';
-            break;
-    }
-    $res = <<<END_STRING
-if($value) {
-    var p=-1;
-    while(
-        (p=$value.indexOf('+',p+1))>0 &&
-        $value.substr(p-1,1)=='\\\\'
-    ){}
-    if(p>=0)
-    {
-        insertTags(
-            $value.substr(0,p).replace('\\\\+','+'),
-            $value.substr(p+1).replace('\\\\+','+'),
-            ''
-        );
-    }
-    else
-    {
-        insertTags($value.replace('\\\\+','+'),'','');
-    }
-    $select
-}
-return false;
-END_STRING;
-    $res = preg_replace('/\s*\n\s*/', ' ', $res);
-    return $res;
 }
