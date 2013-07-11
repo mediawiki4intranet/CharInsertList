@@ -1,28 +1,35 @@
 <?php
-# Copyright (C) 2010 Vitaliy Filippov <vitalif at mail.ru>
-# http://yourcmc.ru/wiki/CharInsertList_(MediaWiki)
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-# http://www.gnu.org/copyleft/gpl.html
 
 /**
- * Extension is very similar to CharInsert, but allows to create HTML
+ * Copyright (C) 2010+ Vitaliy Filippov <vitalif at mail.ru>
+ * http://wiki.4intra.net/CharInsertList
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+
+/**
+ * Extension is very similar to CharInsert, but also allows to create HTML
  * listboxes (<select>) with charinsert items instead of simple hyperlinks.
  *
+ * type=dropdown (default) means to generate <select>boxes
+ * type=links is similar to normal CharInsert output with hyperlinks, but
+ * a title (Item Name) can be specified for each of them.
+ *
  * Usage syntax:
- * <listinsert [attributes]>
+ * <listinsert [type=links|dropdown] [attributes]>
  * Item Name = Item Text
  * Item Name = Long and multiline \
  *             Item Text
@@ -31,31 +38,36 @@
  * Item Name = This is a real \+ character, not cursor marker (with slash)
  * </listinsert>
  *
- * [attributes] are copied to HTML <select> attributes without any change.
+ * [attributes] (all except 'type') are copied to HTML <select> or <a> tag
+ * attributes without any change (for example you can specify style="...").
  *
  * @author Vitaliy Filippov <vitalif at mail.ru>
  * @addtogroup Extensions
  */
 
 if (!defined('MEDIAWIKI'))
+{
     die();
+}
 
 if (defined('MW_SUPPORTS_PARSERFIRSTCALLINIT'))
+{
     $wgHooks['ParserFirstCallInit'][] = 'efListInsertSetup';
+}
 else
+{
     $wgExtensionFunctions[] = 'efListInsertSetup';
+}
 
 $wgExtensionCredits['parserhook'][] = array(
     'name' => 'CharInsertList',
     'author' => 'VitaliyFilippov',
-    'svn-date' => '$LastChangedDate$',
-    'svn-revision' => '$LastChangedRevision$',
-    'url' => 'http://yourcmc.ru/wiki/CharInsertList_(MediaWiki)',
+    'version' => '2013-07-11',
+    'url' => 'http://wiki.4intra.net/CharInsertList',
     'description' => 'Allows creation of HTML selectboxes for inserting non-standard characters',
 );
 define('CIL_TYPE_DROPDOWN', 'dropdown');
-define('CIL_TYPE_LINKS',    'links');
-
+define('CIL_TYPE_LINKS', 'links');
 
 function efListInsertSetup()
 {
@@ -68,22 +80,26 @@ function efListInsertParserHook($text, $attrs, $parser)
 {
     $data = explode("\n", trim($text));
     if (!$data)
+    {
         return '';
-    
-    if (isset($attrs['type']) && in_array(strtolower($attrs['type']), array(CIL_TYPE_DROPDOWN, CIL_TYPE_LINKS)))
-    {
-        $type = $attrs['type'];
-        unset($attrs['type']);
     }
-    else
+    $type = CIL_TYPE_DROPDOWN;
+    if (isset($attrs['type']))
     {
-        $type = CIL_TYPE_DROPDOWN;
+        $type = strtolower($attrs['type']);
+        if ($type != CIL_TYPE_LINKS)
+        {
+            $type = CIL_TYPE_DROPDOWN;
+        }
+        unset($attrs['type']);
     }
     $line = trim($data[count($data)-1]);
     $html = '';
     $select_attr = '';
     foreach ($attrs as $k => $v)
+    {
         $select_attr .= htmlspecialchars($k, ENT_QUOTES) . '="' . htmlspecialchars($v, ENT_QUOTES).'" ';
+    }
     if ($type == CIL_TYPE_LINKS)
     {
         $select_attr .= ' onclick="' . efListItemChange($type) . '"';
@@ -92,7 +108,9 @@ function efListInsertParserHook($text, $attrs, $parser)
     {
         $prev = trim($data[$i]);
         if (substr($prev, -1) == "\\")
+        {
             $line = substr($prev, 0, -1) . "\n" . $line;
+        }
         else
         {
             $html = efListInsertOption($line, $type, $select_attr) . $html;
@@ -121,7 +139,7 @@ function efListInsertOption($line, $type, $select_attr = '')
     switch ($type)
     {
         case CIL_TYPE_LINKS:
-            return '<a href="#" rel="'.htmlspecialchars($value, ENT_QUOTES).'"' . $select_attr . '>'.htmlspecialchars($name, ENT_QUOTES).'</a> ';
+            return '<a href="#" rel="'.htmlspecialchars($value, ENT_QUOTES).'" '.$select_attr.'>'.htmlspecialchars($name, ENT_QUOTES).'</a> ';
         case CIL_TYPE_DROPDOWN:
         default:
             return '<option value="'.htmlspecialchars($value, ENT_QUOTES).'">'.htmlspecialchars($name, ENT_QUOTES).'</option>';
@@ -144,7 +162,7 @@ function efListItemChange($type)
             break;
     }
     $res = <<<END_STRING
-if($value){
+if($value) {
     var p=-1;
     while(
         (p=$value.indexOf('+',p+1))>0 &&
@@ -166,7 +184,6 @@ if($value){
 }
 return false;
 END_STRING;
-    $res = str_replace("\n", '', $res);
+    $res = preg_replace('/\s*\n\s*/', ' ', $res);
     return $res;
 }
-
