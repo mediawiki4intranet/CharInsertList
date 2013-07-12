@@ -26,7 +26,7 @@
  *
  * type=dropdown (default) means to generate <select>boxes
  * type=links is similar to normal CharInsert output with hyperlinks, but
- * a title (Item Name) can be specified for each of them.
+ * Item Names will be used for link text.
  *
  * Usage syntax:
  * <listinsert [type=links|dropdown] [attributes]>
