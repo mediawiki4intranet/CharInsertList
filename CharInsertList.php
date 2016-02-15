@@ -62,7 +62,7 @@ else
 $wgExtensionCredits['parserhook'][] = array(
     'name' => 'CharInsertList',
     'author' => 'VitaliyFilippov',
-    'version' => '2013-07-11',
+    'version' => '2015-02-15',
     'url' => 'http://wiki.4intra.net/CharInsertList',
     'description' => 'Allows creation of HTML selectboxes for inserting non-standard characters',
 );
@@ -131,7 +131,7 @@ function efListInsertParserHook($text, $attrs, $parser)
             $html = '<select '.$select_attr.'><option value="">-</option>' . $html . '</select>';
             break;
     }
-    $wgOut->addModules('CharInsertList');
+    $wgOut->addModules(array('mediawiki.toolbar', 'CharInsertList'));
     return $html;
 }
 

@@ -8,7 +8,7 @@ window.insertTagsWithSplit = function(e)
             value.substr(p-1, 1) == '\\') {}
         if (p >= 0)
         {
-            insertTags(
+            mw.toolbar.insertTags(
                 value.substr(0,p).replace('\\+','+'),
                 value.substr(p+1).replace('\\+','+'),
                 ''
@@ -16,7 +16,7 @@ window.insertTagsWithSplit = function(e)
         }
         else
         {
-            insertTags(value.replace('\\+','+'),'','');
+            mw.toolbar.insertTags(value.replace('\\+','+'),'','');
         }
         if (e.nodeName == 'SELECT')
         {
